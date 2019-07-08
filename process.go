@@ -7,6 +7,7 @@ import (
     "sync"
     "strconv"
     "time"
+    //"bufio"
 )
 
 type process struct {
@@ -17,7 +18,7 @@ type process struct {
 	timestamp int
 	requestTimestamp int
 	processesAddresses [] string
-	s replySet
+	s replyCounter
 	q messageQueue
 	channels [] chan message
 	receivedAllReplies chan bool
@@ -29,8 +30,8 @@ func (p * process ) numberOfProcesses() int {
 	return len(p.processesAddresses)
 }
 
-func (p * process ) addReply(msg message) {
-	p.s.insertReply(msg)
+func (p * process ) addReply() {
+	p.s.addReply()
 	if p.s.size() == p.numberOfProcesses() - 1 {
 		go func() {
 			p.receivedAllReplies<-true
@@ -95,7 +96,7 @@ func (p * process ) getIndexFromAddress(address string) int {
 
 func (p * process) startProcess(address string, id int)  {
 	
-	p.s.newReplySet()
+	p.s.newReplyCounter()
 	p.q.newMessageQueue()
 	p.channelIndex = make(map[string]int)
 	p.receivedAllReplies = make(chan bool)
@@ -133,19 +134,26 @@ func (p * process) sendPermissionToAllProcesses( ) {
 
 func (p * process) openTCPConnection(address string) error {
 	
-	connection, err := net.Dial("tcp", address)
-	if err != nil {
-		return err
-	}
+	// connection, err := net.Dial("tcp", address)
+	// if err != nil {
+	// 	return err
+	// }
 
 	go func() {
 		var msg message
-		defer connection.Close()
+
+		//defer connection.Close()
 		for {
 			msg = <-p.channels[p.getIndexFromAddress(address)]
+			connection, err := net.Dial("tcp", address)
+			if err != nil {
+			//	return err
+			}
+			
 			if err := msg.encodeAndSendMessage(connection); err != nil {
 				log.Println(err)
 			}
+			connection.Close()
 		}
 	}()
 	return nil
@@ -176,7 +184,6 @@ func (p * process) getOtherProcessesAddresses() error {
 	}
 	defer conn.Close()
 
-	//log.Println("address: ", p.address)
 	enc := gob.NewEncoder(conn)
     err = enc.Encode(p.address)
 
@@ -209,7 +216,7 @@ func (p * process) sendMessage(typeMessage int, address string) {
 		}
 
 	go func() {
-		log.Printf("%d Channel of %s on Process %d on state %s sending message to %s",p.timestamp,address,p.id,p.getState(),address)
+		//log.Printf("%d Channel of %s on Process %d on state %s sending message to %s",p.timestamp,address,p.id,p.getState(),address)
 		p.channels[p.getIndexFromAddress(address)] <- msg
 	}()
 }
@@ -225,13 +232,13 @@ func (p * process) handleRequest(connection net.Conn) {
 	log.Println(msg.Timestamp," Process: ", p.id, " on state ", p.getState(), " received a ", msg.getType() ," from ", msg.Id, " address: ", msg.Address)
 	p.updateTimestamp(msg.Timestamp)
     if msg.TypeMessage == REPLY || msg.TypeMessage == PERMISSION {
-    	p.addReply(msg)
+    	p.addReply()
     } else {
     	if p.state == HELD || (p.state == WANTED && less(p,msg)) {
+    		log.Println(p.timestamp, " In Process ", p.id , " on state ", p.getState(), " enqueued because ",p.requestTimestamp, " is less than ", msg.RequestTimestamp)
     		p.enqueueMessage(msg)
+    		log.Println(p.timestamp, "In Process ", p.id , " size set: " , p.s.size(), " queue size: ", p.q.size())
     	} else {
-    		
-    		log.Println(p.timestamp, " Process: ", p.id, " state: ", p.getState())
     		p.sendMessage(REPLY, msg.Address)
     	}
     }
@@ -246,11 +253,11 @@ func (p * process) startListenPort() error {
 		defer listener.Close()
 		for {
 			conn, err := listener.Accept()
-			log.Println(p.timestamp, " Process ", p.id, " received message")
+			//log.Println(p.timestamp, " Process ", p.id, " received message")
 			if err != nil {
 				log.Println(err)
 			}
-			go p.handleRequest(conn)
+			go p.handleRequest(conn)	
 		}
 	}()
 	return nil
@@ -260,8 +267,8 @@ func (p * process) doMulticast(typeMessage int) {
 	log.Println(p.timestamp, " Process ", p.id, " in doMulticast is on state ", p.getState())
 	for i := range p.processesAddresses {
 		if p.processesAddresses[i] != p.address {
-			time.Sleep(1 * time.Millisecond)
 			p.sendMessage(typeMessage, p.processesAddresses[i])
+			time.Sleep(200 * time.Millisecond)
 		}
 	}
 }
@@ -300,15 +307,14 @@ func (p * process) waitAllProcessesReplies() {
 
 func (p * process) enterOnCriticalSection() {
 	p.changeState(WANTED)
-	log.Println(p.timestamp, " Process ", p.id, " in enterOnCriticalSection is on state: ", p.getState())
 	p.doMulticast(REQUEST)
 	p.updateRequestTimestamp()
 	p.waitAllProcessesReplies()
 	p.changeState(HELD)
-	log.Println(p.timestamp, " Process ", p.id, " in enterOnCriticalSection is on state: ", p.getState())
-	
+
 	//really enter in critical region 
 	p.getRandomString()
+	time.Sleep(1 * time.Second)
 }
 
 func (p * process) replyAllEnqueuedRequests() {

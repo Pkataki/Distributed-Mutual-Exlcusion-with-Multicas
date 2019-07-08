@@ -18,16 +18,16 @@ func main() {
 		a <- true
 	}()
 
-	// go func() {
-	// 	p[2] = newProcess("localhost:8092", 2)
-	// 	a <- true
-	// }()
+	go func() {
+		p[2].startProcess("localhost:8092", 8092)
+		a <- true
+	}()
 
 	<-a
 	<-a
+	<-a
 
-
-	for i := 0; i < 1; i++ {
+	for i := 0; i < 3; i++ {
 	//	log.Println("process ", p[i].id)
 		go p[i].runProcess()
 	}

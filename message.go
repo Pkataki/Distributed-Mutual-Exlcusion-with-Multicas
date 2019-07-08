@@ -3,6 +3,7 @@ package main
 import (
     "encoding/gob"
     "net"
+   // "log"
 )
 
 type message struct {
@@ -25,14 +26,23 @@ func (m * message) getType() string {
     return s
 }
 
-func (m * message) receiveAndDecodeMessage(connection net.Conn) error {
+func (m  * message) receiveAndDecodeMessage(connection net.Conn) error {
 	dec := gob.NewDecoder(connection)
     err := dec.Decode(m)
-    return err
+  	
+    if err != nil {
+    	return err
+    }
+    return nil
 }
 
 func (m * message) encodeAndSendMessage(connection net.Conn) error {
 	enc := gob.NewEncoder(connection)
     err := enc.Encode(m)
-    return err
+    
+    if err != nil {
+    	return err
+    }
+
+    return nil
 }
