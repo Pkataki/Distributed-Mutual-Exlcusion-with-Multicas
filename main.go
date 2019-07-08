@@ -1,34 +1,34 @@
 package main
 
-// import (
-// 	"log"
-// )
+import (
+	"strconv"
+	"log"
+)
 
 func main() {
-	var p[3] process
+
+	const NUMBER_PROCESSES = 5
+	const INITIAL_PORT = 8090
+
+	var p[NUMBER_PROCESSES] process
 
 	a := make(chan bool)
-	go func() {
-		p[0].startProcess("localhost:8090", 8090)
-		a <- true
-	}()
 
-	go func() {
-		p[1].startProcess("localhost:8091", 8091)
-		a <- true
-	}()
+	for i := 0; i < NUMBER_PROCESSES; i++ {
+		port := INITIAL_PORT + i
+		go func(i int) {
+			s := strconv.Itoa(port)
+			log.Println(port, "localhost:" + s )
+			p[i].startProcess("localhost:" + s, i)
+			a <- true
+		}(i)
+	}
 
-	go func() {
-		p[2].startProcess("localhost:8092", 8092)
-		a <- true
-	}()
+	for i := 0; i < NUMBER_PROCESSES; i++ {
+		<-a
+	}
 
-	<-a
-	<-a
-	<-a
-
-	for i := 0; i < 3; i++ {
-	//	log.Println("process ", p[i].id)
+	for i := 0; i < NUMBER_PROCESSES; i++ {
 		go p[i].runProcess()
 	}
 	waiter := make(chan bool)

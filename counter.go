@@ -9,8 +9,7 @@ type replyCounter struct {
 	counter int
 }
 
-func (s * replyCounter ) newReplyCounter() {	
-
+func (s * replyCounter ) newReplyCounter() {
 	s.counter = 0
 }	
 

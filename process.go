@@ -268,7 +268,7 @@ func (p * process) doMulticast(typeMessage int) {
 	for i := range p.processesAddresses {
 		if p.processesAddresses[i] != p.address {
 			p.sendMessage(typeMessage, p.processesAddresses[i])
-			time.Sleep(200 * time.Millisecond)
+			time.Sleep(1 * time.Second)
 		}
 	}
 }
@@ -336,13 +336,11 @@ func (p * process) runProcess() {
 		for {
 			log.Println(p.timestamp, " Process: ", p.id, " IS TRYING TO ENTER IN CRITICAL REGION");
 			p.enterOnCriticalSection();
-			if p.state != HELD {
-				log.Fatal(p.timestamp," Process: ", p.id, " is not on HELD state ")
-			}
 			log.Println(p.timestamp, " Process: ", p.id, " ENTERED CRITICAL REGION");
-			time.Sleep(1 * time.Second)
+			time.Sleep( time.Duration(p.id) * time.Second)
 			p.leaveCriticalSection()
 			log.Println(p.timestamp, " Process: ", p.id, " LEFT CRITICAL REGION");
+			p.updateTimestamp(p.timestamp)
 		}
 	}()
 
