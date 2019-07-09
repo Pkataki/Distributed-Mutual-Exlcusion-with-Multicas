@@ -1,55 +1,60 @@
 package main
 
 import (
-	"net"
+	"encoding/gob"
 	"fmt"
 	"log"
+	"net"
 	"sync"
 	"time"
-	"encoding/gob"
 )
 
 type server struct {
 	sync.Mutex
-	queue [] string
+	data map[string]bool
 }
 
 func (s *server) handle_connection(c net.Conn) {
-    
-    log.Println("received a request")
-   	var buffer string
-    dec := gob.NewDecoder(c)
-    err := dec.Decode(&buffer)
 
-    if err != nil {
-    	log.Fatal(err)
-    	log.Fatal("Fail to Decode")
-    }
+	log.Println("received a request")
+	var buffer string
+	dec := gob.NewDecoder(c)
+	err := dec.Decode(&buffer)
 
-    log.Println("decoded a request")
-    log.Println("Received: ", buffer)
-    s.Lock()
-    s.queue = append(s.queue, buffer)
-    s.Unlock()
-    
-    time.Sleep(3 * time.Second)
+	if err != nil {
+		log.Fatal(err)
+		log.Fatal("Fail to Decode")
+	}
 
-    enc := gob.NewEncoder(c)
-    err = enc.Encode(s.queue)
-    
-    if err != nil {
-    	log.Fatal("Fail to Encode")
-    }
+	log.Println("decoded a request")
+	log.Println("Received: ", buffer)
+
+	s.Lock()
+	s.data[buffer] = true
+	s.Unlock()
+
+	time.Sleep(3 * time.Second)
+
+	keys := make([]string, 0)
+	for key := range s.data {
+		keys = append(keys, key)
+	}
+
+	enc := gob.NewEncoder(c)
+	err = enc.Encode(keys)
+
+	if err != nil {
+		log.Fatal("Fail to Encode")
+	}
 }
 
 func (s *server) run_server() {
-	
 
 	// var wg sync.WaitGroup
 	// wg.Add(1)
-
+	s.data = make(map[string]bool)
 	l, err := net.Listen("tcp", "localhost:8080")
-	
+
 	if err != nil {
 		log.Fatal("Fail to connect")
 	}
@@ -60,15 +65,15 @@ func (s *server) run_server() {
 
 	// go func() { // time to run the server
 	// 	defer wg.Done()
- //        time.Sleep(100 * time.Second)
- //    }()
+	//        time.Sleep(100 * time.Second)
+	//    }()
 
-    fmt.Println("Ready to receive requests")
+	fmt.Println("Ready to receive requests")
 
-	go func () { // 
+	go func() { //
 		for {
 
-		    c, err := l.Accept()
+			c, err := l.Accept()
 
 			if err != nil {
 				log.Fatal("Fail to connect")
