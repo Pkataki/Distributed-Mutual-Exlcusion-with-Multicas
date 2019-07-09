@@ -128,10 +128,10 @@ func (p *process) sendPermissionToAllProcesses() {
 func (p *process) openTCPConnection(address string) error {
 	go func(address string) {
 		var msg message
-		
+
 		//Open TCP connection on address
 		connection, err := net.Dial("tcp", address)
-		
+
 		if err != nil {
 			log.Println("Error in opening TCP port: ", address)
 		}
@@ -143,7 +143,7 @@ func (p *process) openTCPConnection(address string) error {
 		for {
 
 			// channel waiting some message
-			msg = <-p.channels[p.getIndexFromAddress(address)]	
+			msg = <-p.channels[p.getIndexFromAddress(address)]
 			log.Println(p.timestamp, " Process ", p.id, " is sending a ", msg.getType(), "with timestamp ", msg.Timestamp, " to ", address)
 			if err := msg.encodeAndSendMessage(encoder); err != nil {
 				log.Println(p.timestamp, " Error on Process ", p.id)
@@ -197,7 +197,6 @@ func (p process) doMulticast(typeMessage int) {
 		}
 	}
 }
-
 
 func (p *process) getOtherProcessesAddresses() error {
 

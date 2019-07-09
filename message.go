@@ -26,15 +26,15 @@ func (m *message) getType() string {
 	return s
 }
 
-func (m *message) receiveAndDecodeMessage(dec * gob.Decoder) error {
+func (m *message) receiveAndDecodeMessage(dec *gob.Decoder) error {
 	if err := dec.Decode(m); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (m message) encodeAndSendMessage(enc * gob.Encoder) error {
-	if err := enc.Encode(m) ; err != nil {
+func (m message) encodeAndSendMessage(enc *gob.Encoder) error {
+	if err := enc.Encode(m); err != nil {
 		return err
 	}
 	return nil

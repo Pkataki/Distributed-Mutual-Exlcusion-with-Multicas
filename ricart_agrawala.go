@@ -1,9 +1,9 @@
 package main
 
 import (
+	"encoding/gob"
 	"log"
 	"net"
-	"encoding/gob"
 )
 
 func (p *process) waitAllProcessesReplies() {
@@ -38,13 +38,13 @@ func (p *process) startListenPort() error {
 }
 
 func (p *process) handleRequest(connection net.Conn) {
-	
+
 	defer connection.Close()
 
 	decoder := gob.NewDecoder(connection)
-	
+
 	for {
-		
+
 		var msg message
 		// blocked waiting some message
 		if err := msg.receiveAndDecodeMessage(decoder); err != nil {
