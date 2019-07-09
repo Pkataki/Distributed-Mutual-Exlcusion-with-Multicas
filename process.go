@@ -44,8 +44,8 @@ func (p *process) numberOfProcesses() int {
 	return len(p.processesAddresses)
 }
 
-func (p *process) incrementReply(msg message) {
-	p.s.addReply(msg)
+func (p *process) incrementReply() {
+	p.s.addReply()
 	if p.s.size() == p.numberOfProcesses()-1 {
 		p.receivedAllReplies <- true
 	}
@@ -102,6 +102,7 @@ func (p *process) startProcess(address string, id int) {
 	p.id = id
 
 	p.changeState(RELEASED)
+
 	if err := p.startListenPort(); err != nil {
 		log.Fatal("Error on startListenPort")
 	}
@@ -126,43 +127,44 @@ func (p *process) sendPermissionToAllProcesses() {
 }
 
 func (p *process) openTCPConnection(address string) error {
-	go func(address string) {
+	//open TCP connection on address
+	connection, err := net.Dial("tcp", address)
+
+	if err != nil {
+		log.Println("Error in opening TCP port: ", address)
+	}
+
+	go func(address string, connection net.Conn) {
 		var msg message
 
-		//Open TCP connection on address
-		connection, err := net.Dial("tcp", address)
-
-		if err != nil {
-			log.Println("Error in opening TCP port: ", address)
-		}
-
-		// create seriali
+		//create encoder serializer
 		encoder := gob.NewEncoder(connection)
 		defer connection.Close()
 
 		for {
-
 			// channel waiting some message
 			msg = <-p.channels[p.getIndexFromAddress(address)]
 			log.Println(p.timestamp, " Process ", p.id, " is sending a ", msg.getType(), "with timestamp ", msg.Timestamp, " to ", address)
+
+			//sending message
 			if err := msg.encodeAndSendMessage(encoder); err != nil {
 				log.Println(p.timestamp, " Error on Process ", p.id)
 				log.Println(err)
 			}
 		}
-	}(address)
+	}(address, connection)
 
 	return nil
 }
 
 func (p *process) openAllProcessesTCPConnections() error {
-	// creating slice of channels
+	//creating slice of channels
 	p.channels = make([]chan message, p.numberOfProcesses())
 	for i, address := range p.processesAddresses {
 
 		p.channelIndex[address] = i
 
-		// creating each channel
+		//creating each channel
 		p.channels[i] = make(chan message)
 
 		if address != p.address {
@@ -176,6 +178,7 @@ func (p *process) openAllProcessesTCPConnections() error {
 }
 
 func (p *process) sendMessage(typeMessage int, address string) {
+	//creating new message
 	msg := message{
 		Timestamp:        p.timestamp,
 		RequestTimestamp: p.requestTimestamp,
@@ -183,6 +186,7 @@ func (p *process) sendMessage(typeMessage int, address string) {
 		Address:          p.address,
 		Id:               p.id,
 	}
+
 	// sending message to address's channel
 	p.channels[p.getIndexFromAddress(address)] <- msg
 }
@@ -193,11 +197,12 @@ func (p process) doMulticast(typeMessage int) {
 	//send message to all processes
 	for _, address := range p.processesAddresses {
 		if address != p.address {
-			p.sendMessage(typeMessage, address)
+			go p.sendMessage(typeMessage, address)
 		}
 	}
 }
 
+//Method related to servers
 func (p *process) getOtherProcessesAddresses() error {
 
 	conn, err := net.Dial("tcp", REGISTER_SERVER_ADDRESS)
@@ -224,6 +229,7 @@ func (p *process) getOtherProcessesAddresses() error {
 	return nil
 }
 
+//Method related to server
 func (p *process) getRandomString() {
 	conn, err := net.Dial("tcp", CRITICAL_REGION_SERVER_ADDRESS)
 

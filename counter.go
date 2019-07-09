@@ -5,30 +5,26 @@ import (
 )
 
 type replyCounter struct {
-	mutex  sync.Mutex
-	buffer map[int]bool
+	mutex   sync.Mutex
+	counter int
 }
 
 func NewReplyCounter() replyCounter {
-	return replyCounter{buffer: make(map[int]bool)}
+	return replyCounter{counter: 0}
 }
 
-func (s *replyCounter) newReplyCounter() {
-	s.buffer = make(map[int]bool)
-}
-
-func (s *replyCounter) addReply(msg message) {
+func (s *replyCounter) addReply() {
 	s.mutex.Lock()
-	s.buffer[msg.Id] = true
+	s.counter += 1
 	s.mutex.Unlock()
 }
 
 func (s *replyCounter) size() int {
-	return len(s.buffer)
+	return s.counter
 }
 
 func (s *replyCounter) clear() {
 	s.mutex.Lock()
-	s.buffer = make(map[int]bool)
+	s.counter = 0
 	s.mutex.Unlock()
 }

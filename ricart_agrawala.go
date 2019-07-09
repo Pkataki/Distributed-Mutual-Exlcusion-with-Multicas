@@ -13,12 +13,12 @@ func (p *process) waitAllProcessesReplies() {
 func (p *process) replyAllEnqueuedRequests() {
 	for p.isMessageQueueEmpty() == false {
 		address := p.getMessageQueueTopRequest()
-		//log.Println(p.timestamp, " Process ", p.id, " sendind enqueue REQUEST as a REPLY to ", address)
 		p.sendMessage(REPLY, address)
 	}
 }
 
 func (p *process) startListenPort() error {
+	//opening TCP port
 	listener, err := net.Listen("tcp", p.address)
 	if err != nil {
 		return err
@@ -31,6 +31,7 @@ func (p *process) startListenPort() error {
 			if err != nil {
 				log.Println(err)
 			}
+			//handling new connection
 			go p.handleRequest(conn)
 		}
 	}(listener)
@@ -41,6 +42,7 @@ func (p *process) handleRequest(connection net.Conn) {
 
 	defer connection.Close()
 
+	//creating decoder serializer
 	decoder := gob.NewDecoder(connection)
 
 	for {
@@ -52,13 +54,13 @@ func (p *process) handleRequest(connection net.Conn) {
 			log.Fatal(err)
 		}
 
-		log.Println(msg.Timestamp, " Process ", p.id, " on state ", p.getState(), " received a ", msg.getType(), " from ", msg.Id, " address: ", msg.Address, "with timestamp ", msg.Timestamp)
+		log.Println(msg.Timestamp, " Process ", p.id, " on state ", p.getState(), " received a ", msg.getType(), " from ", msg.Id, " address: ", msg.Address, "with timestamp ", msg.Timestamp, " size: ", p.s.size())
 
 		p.updateTimestamp(msg.Timestamp)
 
 		// described in book
 		if msg.TypeMessage == REPLY || msg.TypeMessage == PERMISSION {
-			p.incrementReply(msg)
+			p.incrementReply()
 		} else {
 			if p.state == HELD || (p.state == WANTED && less(p, msg)) {
 				log.Println(p.timestamp, " Process ", p.id, " on state ", p.getState(), " enqueued because ", p.requestTimestamp, " is less than ", msg.RequestTimestamp)
