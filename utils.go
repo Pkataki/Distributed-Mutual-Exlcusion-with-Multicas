@@ -8,16 +8,16 @@ const (
 
 // types of message
 const (
-	REPLY      = iota
-	REQUEST    
-	PERMISSION 
+	REPLY = iota
+	REQUEST
+	PERMISSION
 )
 
 // states of process
 const (
-	WANTED   = iota
-	RELEASED 
-	HELD    
+	WANTED = iota
+	RELEASED
+	HELD
 )
 
 func max(x, y int) int {

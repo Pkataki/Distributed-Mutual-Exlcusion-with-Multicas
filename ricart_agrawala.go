@@ -46,6 +46,7 @@ func (p *process) handleRequest(connection net.Conn) {
 	}
 
 	log.Println(msg.Timestamp, " Process ", p.id, " on state ", p.getState(), " received a ", msg.getType(), " from ", msg.Id, " address: ", msg.Address, "with timestamp ", msg.Timestamp)
+
 	p.updateTimestamp(msg.Timestamp)
 
 	if msg.TypeMessage == REPLY || msg.TypeMessage == PERMISSION {
@@ -63,6 +64,7 @@ func (p *process) handleRequest(connection net.Conn) {
 }
 
 func (p *process) enterOnCriticalSection() {
+	//described on book
 	p.changeState(WANTED)
 	p.updateRequestTimestamp()
 	p.doMulticast(REQUEST)
@@ -75,6 +77,7 @@ func (p *process) enterOnCriticalSection() {
 }
 
 func (p *process) leaveCriticalSection() {
+	//described on book
 	p.changeState(RELEASED)
 	p.replyAllEnqueuedRequests()
 	p.clearReplyCounter()

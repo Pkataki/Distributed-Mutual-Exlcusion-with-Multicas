@@ -56,7 +56,6 @@ func (p *process) clearReplyCounter() {
 	p.s.clear()
 }
 
-
 func (p *process) enqueueMessage(msg message) {
 	p.updateTimestamp(p.timestamp)
 	p.q.push(msg)
@@ -110,13 +109,13 @@ func (p *process) startProcess(address string, id int) {
 		log.Fatal("Error on startListenPort")
 	}
 
-	log.Println("Process ", p.id, " startListenPort: OK")
+	//log.Println("Process ", p.id, " startListenPort: OK")
 
 	if err := p.getOtherProcessesAddresses(); err != nil {
 		log.Fatal("Error on getOtherProcessesAddresses")
 	}
 
-	log.Println("Process ", p.id, " getOtherProcessesAddresses: OK")
+	//log.Println("Process ", p.id, " getOtherProcessesAddresses: OK")
 
 	if err := p.openAllProcessesTCPConnections(); err != nil {
 		log.Fatal("Error on openAllProcessesTCPConnections")
@@ -134,25 +133,25 @@ func (p *process) sendPermissionToAllProcesses() {
 }
 
 func (p *process) openTCPConnection(address string) error {
-	
+
 	go func(address string) {
 		var msg message
-		
+
 		for {
-			
+
 			msg = <-p.channels[p.getIndexFromAddress(address)]
 
 			connection, err := net.Dial("tcp", address)
 			if err != nil {
 				log.Println("Error in opening TCP port: ", address)
 			}
-			
+
 			log.Println(p.timestamp, " Process ", p.id, " is sending a ", msg.getType(), "with timestamp ", msg.Timestamp, " to ", address)
 			if err := msg.encodeAndSendMessage(connection); err != nil {
 				log.Println(p.timestamp, " Error on Process ", p.id)
 				log.Println(err)
 			}
-			
+
 			connection.Close()
 		}
 	}(address)
@@ -166,7 +165,7 @@ func (p *process) openAllProcessesTCPConnections() error {
 
 		p.channelIndex[address] = i
 		p.channels[i] = make(chan message)
-		
+
 		if address != p.address {
 			if err := p.openTCPConnection(address); err != nil {
 				return err
@@ -193,10 +192,10 @@ func (p process) doMulticast(typeMessage int) {
 	for _, address := range p.processesAddresses {
 		if address != p.address {
 			p.sendMessage(typeMessage, address)
+			time.Sleep(50 * time.Millisecond)
 		}
 	}
 }
-
 
 func (p *process) getOtherProcessesAddresses() error {
 
@@ -204,7 +203,7 @@ func (p *process) getOtherProcessesAddresses() error {
 	if err != nil {
 		return err
 	}
-	
+
 	defer conn.Close()
 
 	enc := gob.NewEncoder(conn)
@@ -250,6 +249,4 @@ func (p *process) getRandomString() {
 	time.Sleep(2 * time.Second)
 }
 
-
 // Algorithm Part
-
