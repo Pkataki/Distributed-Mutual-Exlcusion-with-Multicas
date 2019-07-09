@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/gob"
-	"net"
+	//"net"
 	// "log"
 )
 
@@ -26,25 +26,16 @@ func (m *message) getType() string {
 	return s
 }
 
-func (m *message) receiveAndDecodeMessage(connection net.Conn) error {
-
-	dec := gob.NewDecoder(connection)
-	err := dec.Decode(m)
-
-	if err != nil {
+func (m *message) receiveAndDecodeMessage(dec * gob.Decoder) error {
+	if err := dec.Decode(m); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (m message) encodeAndSendMessage(connection net.Conn) error {
-
-	enc := gob.NewEncoder(connection)
-	err := enc.Encode(m)
-
-	if err != nil {
+func (m message) encodeAndSendMessage(enc * gob.Encoder) error {
+	if err := enc.Encode(m) ; err != nil {
 		return err
 	}
-
 	return nil
 }

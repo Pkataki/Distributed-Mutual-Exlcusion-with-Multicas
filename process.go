@@ -82,7 +82,6 @@ func (p *process) changeState(state int) {
 	p.mutex.Lock()
 	p.state = state
 	p.mutex.Unlock()
-
 }
 
 func (p *process) updateRequestTimestamp() {
@@ -102,20 +101,14 @@ func (p *process) startProcess(address string, id int) {
 	p.address = address
 	p.id = id
 
-	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
-
 	p.changeState(RELEASED)
 	if err := p.startListenPort(); err != nil {
 		log.Fatal("Error on startListenPort")
 	}
 
-	//log.Println("Process ", p.id, " startListenPort: OK")
-
 	if err := p.getOtherProcessesAddresses(); err != nil {
 		log.Fatal("Error on getOtherProcessesAddresses")
 	}
-
-	//log.Println("Process ", p.id, " getOtherProcessesAddresses: OK")
 
 	if err := p.openAllProcessesTCPConnections(); err != nil {
 		log.Fatal("Error on openAllProcessesTCPConnections")
@@ -133,26 +126,29 @@ func (p *process) sendPermissionToAllProcesses() {
 }
 
 func (p *process) openTCPConnection(address string) error {
-
 	go func(address string) {
 		var msg message
+		
+		//Open TCP connection on address
+		connection, err := net.Dial("tcp", address)
+		
+		if err != nil {
+			log.Println("Error in opening TCP port: ", address)
+		}
+
+		// create seriali
+		encoder := gob.NewEncoder(connection)
+		defer connection.Close()
 
 		for {
 
-			msg = <-p.channels[p.getIndexFromAddress(address)]
-
-			connection, err := net.Dial("tcp", address)
-			if err != nil {
-				log.Println("Error in opening TCP port: ", address)
-			}
-
+			// channel waiting some message
+			msg = <-p.channels[p.getIndexFromAddress(address)]	
 			log.Println(p.timestamp, " Process ", p.id, " is sending a ", msg.getType(), "with timestamp ", msg.Timestamp, " to ", address)
-			if err := msg.encodeAndSendMessage(connection); err != nil {
+			if err := msg.encodeAndSendMessage(encoder); err != nil {
 				log.Println(p.timestamp, " Error on Process ", p.id)
 				log.Println(err)
 			}
-
-			connection.Close()
 		}
 	}(address)
 
@@ -160,10 +156,13 @@ func (p *process) openTCPConnection(address string) error {
 }
 
 func (p *process) openAllProcessesTCPConnections() error {
+	// creating slice of channels
 	p.channels = make([]chan message, p.numberOfProcesses())
 	for i, address := range p.processesAddresses {
 
 		p.channelIndex[address] = i
+
+		// creating each channel
 		p.channels[i] = make(chan message)
 
 		if address != p.address {
@@ -184,18 +183,21 @@ func (p *process) sendMessage(typeMessage int, address string) {
 		Address:          p.address,
 		Id:               p.id,
 	}
+	// sending message to address's channel
 	p.channels[p.getIndexFromAddress(address)] <- msg
 }
 
 func (p process) doMulticast(typeMessage int) {
 	p.updateTimestamp(p.timestamp)
+
+	//send message to all processes
 	for _, address := range p.processesAddresses {
 		if address != p.address {
 			p.sendMessage(typeMessage, address)
-			time.Sleep(50 * time.Millisecond)
 		}
 	}
 }
+
 
 func (p *process) getOtherProcessesAddresses() error {
 
@@ -246,7 +248,5 @@ func (p *process) getRandomString() {
 	if err != nil {
 		log.Fatal("ERROR")
 	}
-	time.Sleep(2 * time.Second)
+	time.Sleep(1 * time.Second)
 }
-
-// Algorithm Part

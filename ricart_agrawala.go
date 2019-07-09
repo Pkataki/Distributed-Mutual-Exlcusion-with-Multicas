@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net"
+	"encoding/gob"
 )
 
 func (p *process) waitAllProcessesReplies() {
@@ -37,27 +38,35 @@ func (p *process) startListenPort() error {
 }
 
 func (p *process) handleRequest(connection net.Conn) {
+	
 	defer connection.Close()
-	var msg message
 
-	if err := msg.receiveAndDecodeMessage(connection); err != nil {
-		log.Println("error on receiveAndDecodeMessage")
-		log.Fatal(err)
-	}
+	decoder := gob.NewDecoder(connection)
+	
+	for {
+		
+		var msg message
+		// blocked waiting some message
+		if err := msg.receiveAndDecodeMessage(decoder); err != nil {
+			log.Println("error on receiveAndDecodeMessage")
+			log.Fatal(err)
+		}
 
-	log.Println(msg.Timestamp, " Process ", p.id, " on state ", p.getState(), " received a ", msg.getType(), " from ", msg.Id, " address: ", msg.Address, "with timestamp ", msg.Timestamp)
+		log.Println(msg.Timestamp, " Process ", p.id, " on state ", p.getState(), " received a ", msg.getType(), " from ", msg.Id, " address: ", msg.Address, "with timestamp ", msg.Timestamp)
 
-	p.updateTimestamp(msg.Timestamp)
+		p.updateTimestamp(msg.Timestamp)
 
-	if msg.TypeMessage == REPLY || msg.TypeMessage == PERMISSION {
-		p.incrementReply(msg)
-	} else {
-		if p.state == HELD || (p.state == WANTED && less(p, msg)) {
-			log.Println(p.timestamp, " Process ", p.id, " on state ", p.getState(), " enqueued because ", p.requestTimestamp, " is less than ", msg.RequestTimestamp)
-			p.enqueueMessage(msg)
-			log.Println(p.timestamp, " Process ", p.id, " size counter: ", p.s.size(), " queue size: ", p.q.size())
+		// described in book
+		if msg.TypeMessage == REPLY || msg.TypeMessage == PERMISSION {
+			p.incrementReply(msg)
 		} else {
-			p.sendMessage(REPLY, msg.Address)
+			if p.state == HELD || (p.state == WANTED && less(p, msg)) {
+				log.Println(p.timestamp, " Process ", p.id, " on state ", p.getState(), " enqueued because ", p.requestTimestamp, " is less than ", msg.RequestTimestamp)
+				p.enqueueMessage(msg)
+				log.Println(p.timestamp, " Process ", p.id, " size counter: ", p.s.size(), " queue size: ", p.q.size())
+			} else {
+				p.sendMessage(REPLY, msg.Address)
+			}
 		}
 	}
 
@@ -85,7 +94,7 @@ func (p *process) leaveCriticalSection() {
 
 func (p *process) runProcess() {
 	log.Println(p.timestamp, " Process ", p.id, " is running ", p.address)
-
+	// process running entering and leaving the critical region
 	for {
 		log.Println(p.timestamp, " Process ", p.id, " IS TRYING TO ENTER IN CRITICAL REGION")
 
