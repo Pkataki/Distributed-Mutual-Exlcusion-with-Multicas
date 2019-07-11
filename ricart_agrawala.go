@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"time"
+	"math/rand"
 )
 
 func (p *process) waitAllProcessesReplies() {
@@ -99,6 +100,8 @@ func (p *process) leaveCriticalSection() {
 func (p *process) runProcess() {
 	log.Println(p.timestamp, " Process ", p.id, " is running ", p.address)
 	p.sendPermissionToAllProcesses()
+
+	var seededRand *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
 	// process running entering and leaving the critical region
 	for {
 		log.Println(p.timestamp, " Process ", p.id, " IS TRYING TO ENTER IN CRITICAL REGION")
@@ -108,6 +111,6 @@ func (p *process) runProcess() {
 
 		p.leaveCriticalSection()
 		log.Println(p.timestamp, " Process ", p.id, " LEFT CRITICAL REGION")
-		time.Sleep(3 * time.Nanosecond)
+		time.Sleep(time.Duration(seededRand.Intn(500)) * time.Millisecond)
 	}
 }

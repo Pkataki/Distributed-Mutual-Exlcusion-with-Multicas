@@ -175,7 +175,7 @@ func (p *process) openAllProcessesTCPConnections() error {
 		}
 	}
 
-	//
+	//waiting all TCP connections to be ready
 	for i := 0; i < p.numberOfProcesses()-1; i++ {
 		<-TCPWaiter
 	}
@@ -203,7 +203,7 @@ func (p process) doMulticast(typeMessage int) {
 	//send message to all processes
 	for _, address := range p.processesAddresses {
 		if address != p.address {
-			p.sendMessage(typeMessage, address)
+			go p.sendMessage(typeMessage, address)
 		}
 	}
 }

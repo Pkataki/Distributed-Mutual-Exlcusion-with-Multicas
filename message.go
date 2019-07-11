@@ -2,8 +2,6 @@ package main
 
 import (
 	"encoding/gob"
-	//"net"
-	// "log"
 )
 
 type message struct {

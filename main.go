@@ -7,7 +7,7 @@ import (
 
 func main() {
 
-	const NUMBER_PROCESSES = 3
+	const NUMBER_PROCESSES = 5
 	const INITIAL_PORT = 8090
 
 	var p [NUMBER_PROCESSES]process
