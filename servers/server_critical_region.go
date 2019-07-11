@@ -44,8 +44,9 @@ func handle_connection(c net.Conn) {
 	log.Println("\n\n")
 	log.Println(info[0], " entered in critical region with timestamp ", info[1])
 
+	time.Sleep(time.Duration(seededRand.Intn(500)) * time.Millisecond)
 	enc := gob.NewEncoder(c)
-	err = enc.Encode(generate_random_string(10))
+	err = enc.Encode(generate_random_string(1e5))
 
 	if err != nil {
 		log.Fatal("Fail to Encode")

@@ -5,7 +5,7 @@ import (
 )
 
 type replyCounter struct {
-	mutex   sync.Mutex
+	mutex sync.Mutex
 	counter int
 }
 
@@ -19,12 +19,12 @@ func (s *replyCounter) addReply() {
 	s.mutex.Unlock()
 }
 
-func (s *replyCounter) size() int {
+func (s replyCounter) size() int {
 	return s.counter
 }
 
 func (s *replyCounter) clear() {
 	s.mutex.Lock()
-	s.counter = 0
+	s.counter = 0;
 	s.mutex.Unlock()
 }

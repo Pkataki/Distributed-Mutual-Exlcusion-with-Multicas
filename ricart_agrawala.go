@@ -4,6 +4,7 @@ import (
 	"encoding/gob"
 	"log"
 	"net"
+	"time"
 )
 
 func (p *process) waitAllProcessesReplies() {
@@ -13,6 +14,7 @@ func (p *process) waitAllProcessesReplies() {
 func (p *process) replyAllEnqueuedRequests() {
 	for p.isMessageQueueEmpty() == false {
 		address := p.getMessageQueueTopRequest()
+		log.Println(p.timestamp, " Process ", p.id, " send ENQUEUED REPLY to ", address)
 		p.sendMessage(REPLY, address)
 	}
 }
@@ -57,21 +59,20 @@ func (p *process) handleRequest(connection net.Conn) {
 		log.Println(msg.Timestamp, " Process ", p.id, " on state ", p.getState(), " received a ", msg.getType(), " from ", msg.Id, " address: ", msg.Address, "with timestamp ", msg.Timestamp, " size: ", p.s.size())
 
 		p.updateTimestamp(msg.Timestamp)
-
 		// described in book
 		if msg.TypeMessage == REPLY || msg.TypeMessage == PERMISSION {
 			p.incrementReply()
 		} else {
 			if p.state == HELD || (p.state == WANTED && less(p, msg)) {
-				log.Println(p.timestamp, " Process ", p.id, " on state ", p.getState(), " enqueued because ", p.requestTimestamp, " is less than ", msg.RequestTimestamp)
+				log.Println(p.timestamp, " Process ", p.id, " on state ", p.getState(), " enqueued because ", p.requestTimestamp, " is less than ", msg.RequestTimestamp, " size counter: ", p.s.size(), " queue size: ", p.q.size())
 				p.enqueueMessage(msg)
-				log.Println(p.timestamp, " Process ", p.id, " size counter: ", p.s.size(), " queue size: ", p.q.size())
+				//log.Println(p.timestamp, " Process ", p.id, " size counter: ", p.s.size(), " queue size: ", p.q.size())
 			} else {
+				log.Println(p.timestamp, " Process ", p.id, " on state ", p.getState(), " is sending a reply to ", msg.Address, " because ", p.requestTimestamp, " is bigger than ", msg.RequestTimestamp, " size counter: ", p.s.size(), " queue size: ", p.q.size())
 				p.sendMessage(REPLY, msg.Address)
 			}
 		}
 	}
-
 }
 
 func (p *process) enterOnCriticalSection() {
@@ -92,10 +93,12 @@ func (p *process) leaveCriticalSection() {
 	p.changeState(RELEASED)
 	p.replyAllEnqueuedRequests()
 	p.clearReplyCounter()
+	p.updateTimestamp(p.timestamp)
 }
 
 func (p *process) runProcess() {
 	log.Println(p.timestamp, " Process ", p.id, " is running ", p.address)
+	p.sendPermissionToAllProcesses()
 	// process running entering and leaving the critical region
 	for {
 		log.Println(p.timestamp, " Process ", p.id, " IS TRYING TO ENTER IN CRITICAL REGION")
@@ -105,5 +108,6 @@ func (p *process) runProcess() {
 
 		p.leaveCriticalSection()
 		log.Println(p.timestamp, " Process ", p.id, " LEFT CRITICAL REGION")
+		time.Sleep(3 * time.Nanosecond)
 	}
 }

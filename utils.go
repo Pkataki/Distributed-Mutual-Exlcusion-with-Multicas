@@ -32,10 +32,10 @@ func less(p *process, msg message) bool {
 
 }
 
-func checkProcessIsMinorThanMessage(timestamp_process, id_process, timestamp_message, id_message int) bool {
-	if timestamp_process < timestamp_message {
+func checkProcessIsMinorThanMessage(timestampProcess, idProcess, timestampMessage, idMessage int) bool {
+	if timestampProcess < timestampMessage {
 		return true
-	} else if (timestamp_process == timestamp_message) && (id_process < id_message) {
+	} else if (timestampProcess == timestampMessage) && (idProcess < idMessage) {
 		return true
 	} else {
 		return false

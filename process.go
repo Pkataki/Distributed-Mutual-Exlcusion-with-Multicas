@@ -6,7 +6,6 @@ import (
 	"net"
 	"strconv"
 	"sync"
-	"time"
 )
 
 type process struct {
@@ -45,6 +44,7 @@ func (p *process) numberOfProcesses() int {
 }
 
 func (p *process) incrementReply() {
+	p.updateTimestamp(p.timestamp)
 	p.s.addReply()
 	if p.s.size() == p.numberOfProcesses()-1 {
 		p.receivedAllReplies <- true
@@ -115,8 +115,6 @@ func (p *process) startProcess(address string, id int) {
 		log.Fatal("Error on openAllProcessesTCPConnections")
 	}
 
-	p.sendPermissionToAllProcesses()
-
 	log.Println("Process ", p.id, " is ready")
 }
 
@@ -126,13 +124,13 @@ func (p *process) sendPermissionToAllProcesses() {
 	p.clearReplyCounter()
 }
 
-func (p *process) openTCPConnection(address string) error {
+func (p *process) openTCPConnection(address string, TCPWaiter chan bool) error {
 	//open TCP connection on address
 	connection, err := net.Dial("tcp", address)
-
 	if err != nil {
 		log.Println("Error in opening TCP port: ", address)
 	}
+	TCPWaiter <- true
 
 	go func(address string, connection net.Conn) {
 		var msg message
@@ -160,6 +158,9 @@ func (p *process) openTCPConnection(address string) error {
 func (p *process) openAllProcessesTCPConnections() error {
 	//creating slice of channels
 	p.channels = make([]chan message, p.numberOfProcesses())
+
+	//channel to wait all the TCP
+	TCPWaiter := make(chan bool, p.numberOfProcesses()-1)
 	for i, address := range p.processesAddresses {
 
 		p.channelIndex[address] = i
@@ -168,10 +169,15 @@ func (p *process) openAllProcessesTCPConnections() error {
 		p.channels[i] = make(chan message)
 
 		if address != p.address {
-			if err := p.openTCPConnection(address); err != nil {
+			if err := p.openTCPConnection(address, TCPWaiter); err != nil {
 				return err
 			}
 		}
+	}
+
+	//
+	for i := 0; i < p.numberOfProcesses()-1; i++ {
+		<-TCPWaiter
 	}
 	return nil
 
@@ -197,7 +203,7 @@ func (p process) doMulticast(typeMessage int) {
 	//send message to all processes
 	for _, address := range p.processesAddresses {
 		if address != p.address {
-			go p.sendMessage(typeMessage, address)
+			p.sendMessage(typeMessage, address)
 		}
 	}
 }
@@ -213,16 +219,12 @@ func (p *process) getOtherProcessesAddresses() error {
 	defer conn.Close()
 
 	enc := gob.NewEncoder(conn)
-	err = enc.Encode(p.address)
-
-	if err != nil {
+	if err := enc.Encode(p.address); err != nil {
 		return err
 	}
 
 	dec := gob.NewDecoder(conn)
-	err = dec.Decode(&p.processesAddresses)
-
-	if err != nil {
+	if err = dec.Decode(&p.processesAddresses); err != nil {
 		return err
 	}
 
@@ -230,15 +232,15 @@ func (p *process) getOtherProcessesAddresses() error {
 }
 
 //Method related to server
-func (p *process) getRandomString() {
+func (p process) getRandomString() {
 	conn, err := net.Dial("tcp", CRITICAL_REGION_SERVER_ADDRESS)
+
+	defer conn.Close()
 
 	if err != nil {
 		log.Println("Dial on ", p.address)
 		log.Fatal(err)
 	}
-
-	defer conn.Close()
 
 	msg := p.address + "|" + strconv.Itoa(p.timestamp)
 
@@ -248,10 +250,10 @@ func (p *process) getRandomString() {
 	dec := gob.NewDecoder(conn)
 	err = dec.Decode(&msg)
 
-	log.Println(p.timestamp, " PROCESS ", p.id, " received ", msg)
+	log.Println(p.timestamp, " PROCESS ", p.id, " received a message")
 
 	if err != nil {
 		log.Fatal("ERROR")
 	}
-	time.Sleep(1 * time.Second)
+	//time.Sleep(100 * time.Millisecond)
 }
